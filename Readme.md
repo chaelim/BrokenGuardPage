@@ -1,6 +1,6 @@
 Broken Stack Guard Page
 ================================
-Demo programs show how stack expansion works in Windows and how it's surprisingly fragile so that an application can break other program's stack guard page that causes clueless crash afterward. 
+Demo programs show how stack expansion works in Windows and how it's surprisingly fragile so that an application can even break other program's stack guard page that can cause clueless crash sometime later.
 
 ## Note ##
 * How to compile and Run demo program
@@ -17,7 +17,7 @@ Demo programs show how stack expansion works in Windows and how it's surprisingl
 * This essentially simulating nested functions calls and each function allocate or use 4KiB stack memory probably for local variables.
 * Stack guard page is set up above the current stack top. Whenever this program is trying to access (read) a memory in the guard page area, `STATUS_GUARD_PAGE_VIOLATION` exception occurs. This exception is caught by the Windows Kernel exception handler and it'll expand or commit current stack by 1 page. 
 * When you keep hold a non-ESC key for a while, this program eventually hit stackoverflow exception (0xC00000FD) because it'll hit the maximum stack size which is specified at link time. ([Default is 1MiB](https://msdn.microsoft.com/en-us/library/windows/desktop/ms686774(v=vs.85).aspx))
-    * ![Installation steps](img/Demo1_StackOverflow)
+    * ![Installation steps](img/Demo1_StackOverflow.PNG)
 * There is linker option `/STACK:reserve[,commit]` sets the size of the stack. Default reserve size is 1 MiB. On my Windows 10, the minimum reserved stack size seems 256 KiB because the value is ignored if I specify smaller than 256KiB.
 * While running, launch [`Vmmap.exe`](https://technet.microsoft.com/en-us/sysinternals/vmmap.aspx) and select `demo1.exe` 
     * ![Installation steps](img/vmmap.PNG)
@@ -29,21 +29,40 @@ Demo programs show how stack expansion works in Windows and how it's surprisingl
     1. Sets up unhandled exception filter to catch and write to console when Windows structured exception is thrown.
     1. Create a new thread and passes main thread's stack limit address (stack top)
     1. In a new thread, try to read above the stack top address where stack guard page exists.
-* You can see `STATUS_GUARD_PAGE_VIOLATION` is thrown whenever try to access stack guard page. Normally when thread stack is growing and touching guard page this exception is handled by Kernel code you won't see the exception. However, in this demo, the guard page is touched by **other** thread then no stack expansion happens. If you continue to hit <Space> key, it eventually tries to access above  the stack guard pages and you will see `ACCESS_VIOLATION` exception.
+* You can see `STATUS_GUARD_PAGE_VIOLATION` (OurUnhandledExceptionFilter receives the exception) is thrown whenever try to access stack guard page. Normally when thread stack is growing and touching guard page this exception is handled by Kernel code you won't see the exception. However, in this demo, the guard page is touched by **other** thread then no stack expansion happens. If you continue to hit <Space> key, it eventually tries to access above  the stack guard pages and you will see `ACCESS_VIOLATION` exception.
+* As far as I remember, in previous versions of Windows (Maybe it was Windows 7), Windows didn't even throw the `STATUS_GUARD_PAGE_VIOLATION` exception so it just blew up the guard pages.
 
 ## Demo3 ##
-* Modify Demo2 a little bit. ThreadProc accesses (3 pages) above the current stack top to break all 3 stack guard pages. Then calling Crash() function which allocate large local variable.
+* Modified Demo2 a little bit. `ThreadProc` accesses (3 pages) above the current stack top to break all 3 stack guard pages. Then calling Crash() function which allocate large local variable.
 * The Crash() function throws `ACCESS_VIOLATION` and never returns.
 * This program shows that random memory read on other thread stack's guard pages can cause access violation later. It should be very rare and probably almost never happen if your program is well-written.
 
-## demo 4 ##
-This program demonstrates that how just **READ** access to thread's stack guard page from a different thread can cause access violation.
-1. Thread A creates Thread B and pass pointer of local variable.
-2. Thread B **reads** a random memory location in the Thread A's stack guard page. It'll cause Thread A's stack guard page exception (STATUS_GUARD_PAGE_VIOLATION) from _Thread B_ and that is not handled properly.
-3. Thread A allocate some large size local variables and try to initialize. In normal situation, stack area should be grown to hold the local variable by OS but stack guard page is broken by Thread A so it does not grow. So, boom crash!
+## Demo 4 ##
+This is last demo showing the most interesting scenario. A malicious process just doing **READ** access on other process thread's stack guard page causes access violation crash of the victim process.
+
+* Malicious process needs following privileges to target victim process
+    * `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD`
+* Executing `IsBadCodePtr` from the threads in the victim process.
+    * There may be another good reason that Microsoft trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
+* Let's crash Chrome browser:
+    1. Compile command line is slightly different for this demo
+        * Use `cl.exe /Ox /EHsc demo4.cpp /lib Shlwapi.lib`
+    1. Launch Chrome and load couple of tabs.
+    1. Run demo4.exe like below on command line. 
+        * `demo4.exe chrome.exe`
+        * I opened 3 YouTube tabs.
+        * ![Installation steps](img/Chrome1.PNG)
+    1. Go back to the Chrome browser click individual tab.
+        * You are likely see some of tabs are crashed. If it's not crashing, you can try again or load other more expensive web site.
+        * ![Installation steps](img/Chrome2.PNG)
+    1. Also sometimes Windows Error Reporting dialog pops up.
+        * ![Installation steps](img/Chrome_WER.PNG) 
+    1. When you attach debugger, you will see something like below. It's access violation in random function. Unfortunately it won't tell what really happened.
+        * ![Installation steps](img/VS_Debugger.PNG)
+        * ![Installation steps](img/ntsd_postmortem_debug.PNG)
 
 ## What this means?
-- It shows how stack growing mechanism is fragile in especially mulithreaded environment. A subtle bug in one thread that read access to other thread's can crash the application. [1](http://blogs.technet.com/b/markrussinovich/archive/2009/07/08/3261309.aspx).
-- Allowing PROCESS_VM_READ from you program can lead serious security issue like allowing crash your application from any other apps. [2](http://blogs.msdn.com/b/oldnewthing/archive/2006/01/17/513779.aspx)
+- It shows how stack growing mechanism is fragile in especially multi-threaded environment. A subtle bug in one thread that read access to other thread's can crash the application. [1](http://blogs.technet.com/b/markrussinovich/archive/2009/07/08/3261309.aspx).
+- Allowing `PROCESS_VM_READ` from you program can lead serious security issue like allowing crash your application from any other apps. [2](http://blogs.msdn.com/b/oldnewthing/archive/2006/01/17/513779.aspx)
 - IsBadxxxPtr API can cause same issue [3](http://blogs.msdn.com/b/larryosterman/archive/2004/05/18/134471.aspx) 
 - .NET commits whole stack memory (no run-time growing). They chose stability by sacrificing more memory.

@@ -1,4 +1,4 @@
-// cl.exe /Ox /EHsc demo1.cpp
+// cl.exe /Ox /EHsc demo3.cpp
 
 #include <SDKDDKVer.h>
 #include <stdio.h>
