@@ -17,10 +17,14 @@ These demo programs show how thread stack expansion works in Windows and how it'
 * This essentially simulating nested function calls and each function allocate or use 4KiB stack memory probably for local variables.
 * Stack guard page is set up above the current stack top. Whenever this program is trying to access (read) a memory in the guard page area, `STATUS_GUARD_PAGE_VIOLATION` exception occurs. This exception is caught by the Windows Kernel exception handler and it'll expand or commit current stack by 1 page. 
 * When you keep hold a non-ESC key for a while, this program eventually hit stackoverflow exception (0xC00000FD) because it'll hit the maximum stack size which is specified at link time. ([Default is 1MiB](https://msdn.microsoft.com/en-us/library/windows/desktop/ms686774(v=vs.85).aspx))
-    * ![Demo1 output](img/Demo1_StackOverflow.PNG)
+
+    ![Demo1 output](img/Demo1_StackOverflow.PNG)
+
 * There is linker option `/STACK:reserve[,commit]` sets the size of the stack. Default reserve size is 1 MiB. On my Windows 10, the minimum reserved stack size seems 256 KiB because the value is ignored if I specify smaller than 256 KiB.
-* While running, launch [`Vmmap.exe`](https://technet.microsoft.com/en-us/sysinternals/vmmap.aspx) and select `demo1.exe` 
-    * ![VMMAP](img/vmmap.PNG)
+* While running, launch [Vmmap.exe](https://technet.microsoft.com/en-us/sysinternals/vmmap.aspx) and select `demo1.exe` 
+
+    ![VMMAP](img/vmmap.PNG)
+
 * Hit <Space> key and on the command window where `demo1.exe` is running to expand the stack then go back to the vmmap and refresh. You can see the commit memory is growing.
 
 ## Demo 2 ##
@@ -42,6 +46,7 @@ This is last demo showing the most interesting scenario. A malicious process jus
 
 * Malicious process needs following privileges to target victim process
     * `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD`
+    * Even if a process runs at [low integrity level](https://msdn.microsoft.com/en-us/library/bb625960.aspx), it doesn't prevent a malicious program from reading other process's memory.  
 * Executing `IsBadCodePtr` from the threads in the victim process.
     * There may be another good reason that Microsoft trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
 * Let's crash Chrome browser:
@@ -51,19 +56,25 @@ This is last demo showing the most interesting scenario. A malicious process jus
     1. Run demo4.exe like below on command line. 
         * `demo4.exe chrome.exe`
         * I opened 3 YouTube tabs.
-        * ![Chrome Loaded 3 YouTube Tabs](img/Chrome1.PNG)
+
+        ![Chrome Loaded 3 YouTube Tabs](img/Chrome1.PNG)
+
     1. Go back to the Chrome browser click individual tab.
         * You are likely see some of tabs are crashed. If it's not crashing, you can try again or load other more expensive web site.
-        * ![Crashed Tabs](img/Chrome2.PNG)
+
+        ![Crashed Tabs](img/Chrome2.PNG)
+
     1. Sometimes main Chrome process is killed that also kill all of its children processes that causes Windows Error Reporting dialog pops up.
-        * ![Chrome WER](img/Chrome_WER.PNG) 
+
+        ![Chrome WER](img/Chrome_WER.PNG) 
+
     1. When you attach debugger, you will see something like below. It's access violation in random function. Unfortunately it won't tell what really happened.
-        * ![Postmortem debugger VS](img/VS_Debugger.PNG)
-        * ![Postmortem debugger ntsd](img/ntsd_postmortem_debug.PNG)
+    
+        ![Postmortem debugger VS](img/VS_Debugger.PNG)
+        ![Postmortem debugger ntsd](img/ntsd_postmortem_debug.PNG)
 
 ## Conclusion ##
 - It shows how stack growing mechanism is fragile in especially multi-threaded environment. A subtle bug in one thread that read access to other thread's stack guard page area can crash the application. See this [Mark's blog](http://blogs.technet.com/b/markrussinovich/archive/2009/07/08/3261309.aspx) for thread stack expansion details.
 - Allowing `PROCESS_VM_READ` right from your program can lead serious security issue like allowing crash your application from any other apps. See this [Blog](http://blogs.msdn.com/b/oldnewthing/archive/2006/01/17/513779.aspx) and [IsBadxxxPtr APIs are dangerous](http://blogs.msdn.com/b/larryosterman/archive/2004/05/18/134471.aspx) 
 - .NET commits whole thread stack memory (no run-time growing). They've chosen stability over more memory consumption.
-- Even if a process runs at [low integrity level](https://msdn.microsoft.com/en-us/library/bb625960.aspx) then it still won't be able to 
 - When I develop servers, I always **commits whole thread stack memory** especially for the worker threads. I think eliminating run-time stack growing will give tiny bit of perf benefits as well.
