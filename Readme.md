@@ -42,7 +42,7 @@ These demo programs show how thread stack expansion works in Windows and how it'
 * This program shows that random memory read on other thread stack's guard pages can cause access violation later. Although, this kind of crash should be very rare and probably almost never happen if your program is well-written.
 
 ## Demo 4 ##
-This is last demo showing the most interesting scenario. A malicious process just doing **READ** access on other process thread's stack guard page causes access violation crash of the victim process.
+This is last demo showing the most interesting scenario. A malicious process just doing **READ** access on other process thread's stack guard page causes access violation crash of the victim process. The important thing is the access violation does not happen immediately after stack guard page broken. It'll happen later when the thread start using more stack memory, so the crash will be mostly clueless and crash dump doesn't tell much about the story.
 
 * Malicious process needs following privileges to target victim process
     * `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD`
