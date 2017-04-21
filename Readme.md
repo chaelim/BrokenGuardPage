@@ -74,7 +74,8 @@ This is last demo showing the most interesting scenario. A malicious process jus
         ![Postmortem debugger ntsd](img/ntsd_postmortem_debug.PNG)
 
 ## Conclusion ##
-- It shows how stack growing mechanism is fragile in especially multi-threaded environment. A subtle bug in one thread that read access to other thread's stack guard page area can crash the application. See this [Mark's blog](http://blogs.technet.com/b/markrussinovich/archive/2009/07/08/3261309.aspx) for thread stack expansion details.
-- Allowing `PROCESS_VM_READ` right from your program can lead serious security issue like allowing crash your application from any other apps. See this [Blog](http://blogs.msdn.com/b/oldnewthing/archive/2006/01/17/513779.aspx) and [IsBadxxxPtr APIs are dangerous](http://blogs.msdn.com/b/larryosterman/archive/2004/05/18/134471.aspx) 
-- .NET commits whole thread stack memory (no run-time growing). They've chosen stability over more memory consumption.
-- When I develop servers, I always **commits whole thread stack memory** especially for the worker threads. I think eliminating run-time stack growing will give tiny bit of perf benefits as well.
+- It shows how stack growing mechanism is fragile in especially multi-threaded environment. A subtle bug in one thread that reads other thread's stack guard page area can crash the application.
+- See this [Mark's blog](http://blogs.technet.com/b/markrussinovich/archive/2009/07/08/3261309.aspx) for thread stack expansion details.
+- Allowing just `PROCESS_VM_READ` right can lead serious security issue like allowing crash your application from any other apps. See this [Blog](http://blogs.msdn.com/b/oldnewthing/archive/2006/01/17/513779.aspx) and [IsBadxxxPtr APIs are dangerous](http://blogs.msdn.com/b/larryosterman/archive/2004/05/18/134471.aspx) 
+- .NET commits whole thread stack memory (no run-time growing). They've chosen reliability over more memory consumption.
+- When I working on servers, I always **committed whole thread stack memory** at the thread initialization time especially for the worker threads in game server. I think eliminating run-time stack growing will give tiny bit of perf benefits as well. :)
