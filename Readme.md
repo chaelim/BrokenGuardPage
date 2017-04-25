@@ -46,7 +46,6 @@ This is last demo showing the most interesting scenario. A malicious process jus
 
 * Malicious process needs following privileges to target victim process
     * `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD`
-    * Even if a process runs at [low integrity level](https://msdn.microsoft.com/en-us/library/bb625960.aspx), it doesn't prevent a malicious program from reading other process's memory.  
 * Executing `IsBadCodePtr` from the threads in the victim process.
     * There may be another good reason that Microsoft trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
 * Let's crash Chrome browser:
@@ -72,6 +71,11 @@ This is last demo showing the most interesting scenario. A malicious process jus
     
         ![Postmortem debugger VS](img/VS_Debugger.PNG)
         ![Postmortem debugger ntsd](img/ntsd_postmortem_debug.PNG)
+
+* If run demo4 process at [low integrity level](https://msdn.microsoft.com/en-us/library/bb625960.aspx), it cannot open chrome processes running at `medium` level. However, there are still chrome processes running at `low` and `untrusted` integrity level and demo4 be able to blow their stack guard pages. Although it can't crash all chrome since the parent chrome process is running at `medium` level.    
+    * Run this command to change integrity level (from Administrator command prompt) `icacls demo4.exe /setintegritylevel low`
+     
+    ![Chrome process integrity level](img/chrome_integrity_level.PNG)
 
 ## Conclusion ##
 - It shows how stack growing mechanism is fragile in especially multi-threaded environment. A subtle bug in one thread that reads other thread's stack guard page area can crash the application.
