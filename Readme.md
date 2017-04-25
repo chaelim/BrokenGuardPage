@@ -50,7 +50,7 @@ This is last demo showing the most interesting scenario. A malicious process jus
     * There may be another good reason that Microsoft trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
 * Let's crash Chrome browser:
     1. Compile command line is slightly different for this demo
-        * Use `cl.exe /Ox /EHsc demo4.cpp /lib Shlwapi.lib`
+        * Use `cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib`
     1. Launch Chrome and load couple of tabs.
     1. Run demo4.exe like below on command line. 
         * `demo4.exe chrome.exe`
