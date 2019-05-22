@@ -1,6 +1,6 @@
 Broken Stack Guard Page
 ================================
-These demo programs show how thread stack expansion works in Windows and how it's surprisingly fragile so that an application can even break other program's stack guard page that can cause clueless crash sometime later.
+4 demo programs show how to break thread stack expansion in Windows. Stack area auto expansion is surprisingly fragile so that an application can even break other program's stack guard page that can cause clueless crash sometime later.
 
 ## Note ##
 * How to compile and Run demo program
@@ -42,12 +42,12 @@ These demo programs show how thread stack expansion works in Windows and how it'
 * This program shows that random memory read on other thread stack's guard pages can cause access violation later. Although, this kind of crash should be very rare and probably almost never happen if your program is well-written.
 
 ## Demo 4 ##
-This is last demo showing the most interesting scenario. A malicious process just doing **READ** access on other process thread's stack guard page causes access violation crash of the victim process. The important thing is the access violation does not happen immediately after stack guard page broken. It'll happen later when the thread start using more stack memory, so the crash will be mostly clueless and crash dump doesn't tell much about the story.
+This is last demo showing the most interesting scenario. A malicious process just doing **READ** access on the other process thread's stack guard page causes access violation crash of the victim process. The important thing is the access violation does not happen immediately after stack guard page is broken. It'll happen later when the thread start using more stack memory, so the crash will be mostly clueless and crash dump doesn't tell much about the story.
 
 * Malicious process needs following privileges to target victim process
     * `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD`
 * Executing `IsBadCodePtr` from the threads in the victim process.
-    * There may be another good reason that Microsoft trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
+    * This may be another good reason that Microsoft is trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
 * Let's crash Chrome browser:
     1. Compile command line is slightly different for this demo
         * Use `cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib`
@@ -78,8 +78,8 @@ This is last demo showing the most interesting scenario. A malicious process jus
     ![Chrome process integrity level](img/chrome_integrity_level.PNG)
 
 ## Conclusion ##
-- It shows how stack growing mechanism is fragile in especially multi-threaded environment. A subtle bug in one thread that reads other thread's stack guard page area can crash the application.
+- The demo programs show how stack growing mechanism is fragile especially in multi-threaded environment. A subtle bug in one thread that reads other thread's stack guard page area can crash the application.
 - See this [Mark's blog](http://blogs.technet.com/b/markrussinovich/archive/2009/07/08/3261309.aspx) for thread stack expansion details.
 - Allowing just `PROCESS_VM_READ` right can lead serious security issue like allowing crash your application from any other apps. See this [Blog](http://blogs.msdn.com/b/oldnewthing/archive/2006/01/17/513779.aspx) and [IsBadxxxPtr APIs are dangerous](http://blogs.msdn.com/b/larryosterman/archive/2004/05/18/134471.aspx) 
 - .NET commits whole thread stack memory (no run-time growing). They've chosen reliability over more memory consumption.
-- When I working on servers, I always **committed whole thread stack memory** at the thread initialization time especially for the worker threads in game server. I think eliminating run-time stack growing will give tiny bit of perf benefits as well. :)
+- For game servers, I always **committed whole thread stack memory** at the thread initialization time especially for the worker threads in game server. I think eliminating run-time stack growing will give tiny bit of perf benefits as well. :)
