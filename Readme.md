@@ -1,6 +1,6 @@
 Broken Stack Guard Page
 ================================
-Present 4 demo programs are showing how to break thread stack expansion in Windows. Stack area auto expansion is surprisingly fragile such that an application can even break other program's stack guard page and it can cause a clueless crash sometime later.
+Present 4 demo programs that are showing how to break thread stack expansion in Windows. Stack area auto expansion is surprisingly fragile such that an application can even break other program's stack guard page and it can cause a clueless crash sometime later.
 
 ## Note ##
 * How to compile and Run demo program
@@ -9,6 +9,9 @@ Present 4 demo programs are showing how to break thread stack expansion in Windo
     1. Enter `demoX.exe` to run the demoX.
 
 * As a first step, all demo programs get stack top address of main thread from [TIB](https://en.wikipedia.org/wiki/Win32_Thread_Information_Block) (Thread Information Block).
+
+## Caveat ##
+* This demo programs were originally tested on Windows 7 and the behavior might have changed in the later Windows versions.
 
 ## Demo 1 ##
 * In this demo, `AccessStackGuardMemory` function is simply trying to read memory address at the beginning of the one page (4KiB) above the current stack top address. (Remember stack grows to lower address from higher address).
