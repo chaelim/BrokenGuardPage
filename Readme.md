@@ -1,6 +1,6 @@
 Broken Stack Guard Page
 ================================
-Present 4 demo programs that are showing how to break thread stack expansion in Windows. Stack area auto expansion is surprisingly fragile such that an application can even break other program's stack guard page and it can cause a clueless crash sometime later.
+This project presents 4 demo programs showing how to break thread stack expansion in Windows. Stack area auto expansion is surprisingly fragile such that an application can even break the other process's stack guard page and it can cause a clueless crash sometime later.
 
 ## Note ##
 * How to compile and Run demo program
@@ -14,9 +14,9 @@ Present 4 demo programs that are showing how to break thread stack expansion in 
 * This demo programs were originally tested on Windows 7 and the behavior might have changed in the later Windows versions.
 
 ## Demo 1 ##
-* In this demo, `AccessStackGuardMemory` function is simply trying to read memory address at the beginning of the one page (4KiB) above the current stack top address. (Remember stack grows to lower address from higher address).
-* Use this command line to compile `cl.exe /Ox /EHsc demo1.cpp /link /stack:262144` to set max stack size as 256KiB.
-* It continues to move the memory pointer up by 1 page (in other words, subtract 0x1000 from the current address) and try to read `int` (4 bytes) value. You can hit any key other than ESC to continue to move to the next pages.
+* In this demo, `AccessStackGuardMemory` function is simply trying to read the memory address at the beginning of the one page (4KiB) above the current stack top address. (Remember stack grows to lower address from higher address).
+* Command line to compile: `cl.exe /Ox /EHsc demo1.cpp /link /stack:262144` (Set max stack size as 256KiB).
+* It continues to move the memory pointer up by 1 page (in other words, subtract 0x1000 from the current address) and tries to read `int` (4 bytes) value. You can hit any key other than ESC to continue to move to the next pages.
 * This is essentially simulating nested function calls where each function allocates or uses 4KiB stack memory for local variables.
 * The stack guard page is set up above the current stack top by Windows. Whenever this program is trying to access (read) a memory location in the guard page area, `STATUS_GUARD_PAGE_VIOLATION` exception occurs. This exception is caught by the Windows Kernel exception handler and it'll expand or commit current stack by 1 page. 
 * When you keep hold a non-ESC key for a while, this program will eventually hit stackoverflow exception (0xC00000FD) because it'll hit the maximum stack size which is specified at link time. ([Default is 1MiB](https://msdn.microsoft.com/en-us/library/windows/desktop/ms686774(v=vs.85).aspx))
