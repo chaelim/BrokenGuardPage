@@ -45,15 +45,15 @@ This project presents 4 demo programs showing how to break thread stack expansio
 * This program is showing that a random memory read on other thread stack's guard pages can cause access violation later. Although, this kind of crash should be very rare and probably almost never happen if your program is well-written.
 
 ## Demo 4 ##
-This is the last demo showing the most interesting scenario. A malicious process is just doing **READ** access on the other process thread's stack guard page causes access violation crash of the victim process. An important thing is the access violation does not happen immediately after stack guard page is broken. It'll happen later when the thread start using more stack memory therfore the crash will be mostly clueless and a crash dump doesn't tell much about the whole story.
+This is the last demo but the most interesting scenario. A malicious process is just doing **READ** access on the other process thread's stack guard page and it will cause access violation crash of the victim process. An important thing to note. The access violation does not happen immediately after the victim process's stack guard pages are broken. The crash will happen later when any one of the victim process's threads starts using more stack memory that requires stack expansion. The crash will be mostly clueless to the victim process and the crash dump doesn't tell much about what really happened.
 
 * Malicious process needs following privileges to target victim process.
     * `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD`
 * Executing `IsBadCodePtr` from the threads in the victim process.
     * This may be another good reason that Microsoft is trying to discontinue the `IsBadCodePtr` API (https://msdn.microsoft.com/en-us/library/windows/desktop/aa366712(v=vs.85).aspx)
-* Let's crash Google Chrome browser:
+* As an example, let's cluelessly crash the Google Chrome browser:
     1. Compile command line is slightly different for this demo
-        * Use `cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib`
+        * Use `cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib Advapi32.lib`
     1. Launch Chrome and load couple of tabs.
         * I opened 3 YouTube tabs.
     1. Run demo4.exe like below on command line. 

